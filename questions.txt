@@ -1,0 +1,26 @@
+# =============================================
+# AI Quiz Generator - Questions File
+# Format: difficulty|question|option_a|option_b|option_c|option_d|correct_answer
+# Difficulty: easy, medium, hard
+# =============================================
+
+# ----- EASY QUESTIONS -----
+easy|What is Python?|A web browser|A programming language|An operating system|A database|B
+easy|What does AI stand for?|Automatic Integration|Artificial Intelligence|Advanced Interface|Audio Input|B
+easy|Which symbol is used for comments in Python?|//|/* */|#|--|C
+easy|What is the output of print(2 + 3)?|23|5|2 + 3|Error|B
+easy|Which data type is used to store text in Python?|int|float|str|bool|C
+
+# ----- MEDIUM QUESTIONS -----
+medium|What is a Python dictionary?|An ordered list|A key-value pair collection|A single value|A loop structure|B
+medium|Which library is commonly used for AI in Python?|Django|Flask|TensorFlow|Tkinter|C
+medium|What does the 'len()' function do in Python?|Deletes an element|Returns the length of an object|Sorts a list|Adds elements|B
+medium|What is NLP in AI?|Neural Language Program|Natural Language Processing|Network Learning Protocol|New Logic Programming|B
+medium|Which of these is a valid Python loop?|for i in range(5):|loop i to 5:|repeat 5 times:|for(i=0; i<5; i++)|A
+
+# ----- HARD QUESTIONS -----
+hard|What is a neural network?|A computer network|A model inspired by the human brain|A database structure|An operating system|B
+hard|What is the time complexity of binary search?|O(n)|O(n^2)|O(log n)|O(1)|C
+hard|Which Python decorator is used for static methods?|@classmethod|@staticmethod|@property|@abstract|B
+hard|What is overfitting in machine learning?|Model performs well on all data|Model is too simple|Model performs well on training data but poorly on new data|Model takes too long to train|C
+hard|What is the GIL in Python?|General Import Library|Global Interpreter Lock|Graphical Interface Layer|Generated Inline Logic|B
