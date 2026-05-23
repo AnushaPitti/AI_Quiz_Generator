@@ -1,238 +1,264 @@
+"""AI Quiz Generator
+
+Terminal-based quiz app built for the Python with Generative AI
+internship at Think Champ PV LTD.
+
+Features
+--------
+- Loads MCQ questions from questions.txt
+- Difficulty selection (easy / medium / hard / all)
+- Shuffles questions each run
+- 15-second visible countdown timer per question
+- Score, percentage, and letter grade
+- Saves every result to scores.txt with a timestamp
+- Option to play again at a different difficulty without restarting
+"""
+
 import os
 import random
 import time
 import threading
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List
 
-# =============================================
-#          AI QUIZ GENERATOR
-#   Python with Generative AI Internship
-#          Think Champ PV LTD
-# =============================================
+# ---- settings ----
+QUESTIONS_FILE = "questions.txt"
+SCORES_FILE    = "scores.txt"
+TIME_LIMIT     = 15          # seconds per question
 
-# ----- ANSI Color Codes (No external library needed) -----
-class Color:
-    RESET   = "\033[0m"
-    BOLD    = "\033[1m"
-    RED     = "\033[91m"
-    GREEN   = "\033[92m"
-    YELLOW  = "\033[93m"
-    BLUE    = "\033[94m"
-    MAGENTA = "\033[95m"
-    CYAN    = "\033[96m"
-    WHITE   = "\033[97m"
-
-
-def print_banner():
-    """Display a colorful welcome banner."""
-    print(f"""
-{Color.CYAN}{Color.BOLD}╔══════════════════════════════════════════════════╗
-║                                                  ║
-║        🤖  AI QUIZ GENERATOR  🤖                ║
-║                                                  ║
-║   Python with Generative AI Internship Project   ║
-║              Think Champ PV LTD                  ║
-║                                                  ║
-╚══════════════════════════════════════════════════╝{Color.RESET}
-""")
+# ---- terminal colours (ANSI) ----
+GREEN  = "\033[92m"
+RED    = "\033[91m"
+YELLOW = "\033[93m"
+CYAN   = "\033[96m"
+BLUE   = "\033[94m"
+BOLD   = "\033[1m"
+RESET  = "\033[0m"
 
 
-def load_questions(filename="questions.txt"):
-    """
-    Load questions from a text file.
-    Format per line: difficulty|question|option_a|option_b|option_c|option_d|correct_option_letter
-    Lines starting with '#' are treated as comments/headers.
-    """
-    questions = []
-    if not os.path.exists(filename):
-        print(f"{Color.RED}Error: '{filename}' not found! Please make sure it exists.{Color.RESET}")
-        return questions
+@dataclass
+class Question:
+    difficulty: str
+    text: str
+    options: Dict[str, str]
+    answer: str                # A, B, C or D
 
-    with open(filename, "r", encoding="utf-8") as f:
-        for line in f:
+
+# ---------- loading questions ----------
+
+def load_questions(filepath: str = QUESTIONS_FILE) -> List[Question]:
+    """Read questions from a pipe-delimited text file."""
+    if not os.path.exists(filepath):
+        print(f"{RED}Error: {filepath} not found.{RESET}")
+        return []
+
+    questions: List[Question] = []
+    with open(filepath, "r", encoding="utf-8") as fh:
+        for line in fh:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            parts = line.split("|")
-            if len(parts) == 7:
-                questions.append({
-                    "difficulty": parts[0].strip().lower(),
-                    "question":   parts[1].strip(),
-                    "options": {
-                        "A": parts[2].strip(),
-                        "B": parts[3].strip(),
-                        "C": parts[4].strip(),
-                        "D": parts[5].strip(),
-                    },
-                    "answer": parts[6].strip().upper()
-                })
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) != 7:
+                continue
+            diff, text, opt_a, opt_b, opt_c, opt_d, correct = parts
+            if correct.upper() not in ("A", "B", "C", "D"):
+                continue
+            questions.append(
+                Question(
+                    difficulty=diff.lower(),
+                    text=text,
+                    options={"A": opt_a, "B": opt_b, "C": opt_c, "D": opt_d},
+                    answer=correct.upper(),
+                )
+            )
     return questions
 
 
-def choose_difficulty(questions):
-    """Let the user select a difficulty level or play all."""
-    available = sorted(set(q["difficulty"] for q in questions))
-    print(f"{Color.YELLOW}{Color.BOLD}📊 Choose Difficulty Level:{Color.RESET}")
-    print(f"   {Color.GREEN}1) Easy{Color.RESET}")
-    print(f"   {Color.YELLOW}2) Medium{Color.RESET}")
-    print(f"   {Color.RED}3) Hard{Color.RESET}")
-    print(f"   {Color.CYAN}4) All (Mixed){Color.RESET}")
-    print()
+# ---------- difficulty selection ----------
 
+def pick_difficulty() -> str:
+    """Let the user choose a difficulty level."""
+    print("\nSelect difficulty:")
+    print("  1) Easy")
+    print("  2) Medium")
+    print("  3) Hard")
+    print("  4) All (mixed)")
+    choices = {"1": "easy", "2": "medium", "3": "hard", "4": "all"}
     while True:
-        choice = input(f"{Color.BOLD}Enter your choice (1-4): {Color.RESET}").strip()
-        if choice == "1":
-            return [q for q in questions if q["difficulty"] == "easy"]
-        elif choice == "2":
-            return [q for q in questions if q["difficulty"] == "medium"]
-        elif choice == "3":
-            return [q for q in questions if q["difficulty"] == "hard"]
-        elif choice == "4":
-            return questions
-        else:
-            print(f"{Color.RED}Invalid choice. Please enter 1, 2, 3, or 4.{Color.RESET}")
+        sel = input("Enter 1-4: ").strip()
+        if sel in choices:
+            return choices[sel]
+        print(f"{YELLOW}Invalid choice. Type 1, 2, 3 or 4.{RESET}")
 
 
-def ask_question(q, index, total, timer_seconds=15):
-    """
-    Display a question with options and a countdown timer.
-    Returns True if answered correctly, False otherwise.
-    """
-    answered = threading.Event()
-    user_answer = [None]
+def filter_questions(questions: List[Question], level: str) -> List[Question]:
+    if level == "all":
+        return list(questions)
+    return [q for q in questions if q.difficulty == level]
 
-    # Difficulty color
-    diff_colors = {"easy": Color.GREEN, "medium": Color.YELLOW, "hard": Color.RED}
-    diff_color = diff_colors.get(q["difficulty"], Color.WHITE)
 
-    print(f"\n{Color.BOLD}{'─' * 50}{Color.RESET}")
-    print(f"{Color.BOLD}{Color.BLUE}Question {index}/{total}{Color.RESET}  "
-          f"[{diff_color}{q['difficulty'].capitalize()}{Color.RESET}]  "
-          f"⏱️  {timer_seconds} seconds")
-    print(f"{Color.BOLD}{'─' * 50}{Color.RESET}")
-    print(f"\n{Color.WHITE}{Color.BOLD}{q['question']}{Color.RESET}\n")
+# ---------- timer ----------
 
-    for key in ["A", "B", "C", "D"]:
-        print(f"   {Color.CYAN}{key}){Color.RESET} {q['options'][key]}")
+def countdown_timer(seconds: int, stop_event: threading.Event) -> None:
+    """Background thread that prints a warning when time runs out."""
+    remaining = seconds
+    while remaining > 0 and not stop_event.is_set():
+        time.sleep(1)
+        remaining -= 1
+        # show warning at 5 seconds remaining
+        if remaining == 5 and not stop_event.is_set():
+            print(f"\n{YELLOW}>>> 5 seconds remaining! <<<{RESET}")
+    if not stop_event.is_set():
+        print(f"\n{RED}>>> Time's up! ({seconds}s) <<<{RESET}")
 
-    print()
 
-    # Timer logic
-    def timer_func():
-        time.sleep(timer_seconds)
-        if not answered.is_set():
-            print(f"\n{Color.RED}⏰ Time's up!{Color.RESET}")
-            answered.set()
+# ---------- asking a single question ----------
 
-    timer_thread = threading.Thread(target=timer_func, daemon=True)
+def ask_question(q: Question, number: int, total: int) -> bool:
+    """Display one question with timer, collect answer, return True if correct."""
+    # difficulty tag colour
+    tag_colour = {"easy": GREEN, "medium": YELLOW, "hard": RED}.get(
+        q.difficulty, BLUE
+    )
+
+    print(f"\n{'-' * 50}")
+    print(f"Question {number}/{total}  "
+          f"[{tag_colour}{q.difficulty.capitalize()}{RESET}]  "
+          f"{CYAN}Timer: {TIME_LIMIT}s{RESET}")
+    print(f"{'-' * 50}")
+    print(f"\n{BOLD}{q.text}{RESET}\n")
+    for letter in ("A", "B", "C", "D"):
+        print(f"  {letter}) {q.options[letter]}")
+
+    # start background timer
+    stop_event = threading.Event()
+    timer_thread = threading.Thread(
+        target=countdown_timer,
+        args=(TIME_LIMIT, stop_event),
+        daemon=True
+    )
+
+    print(f"\n{CYAN}You have {TIME_LIMIT} seconds to answer...{RESET}")
+
+    start_time = time.time()
     timer_thread.start()
 
-    # Get user input
+    # get user input
     try:
-        raw = input(f"{Color.BOLD}Your Answer (A/B/C/D): {Color.RESET}").strip().upper()
-        answered.set()
-        if raw in ["A", "B", "C", "D"]:
-            user_answer[0] = raw
+        user_input = input("\nYour answer (A/B/C/D): ").strip().upper()
     except EOFError:
-        answered.set()
+        user_input = ""
 
-    # Check answer
-    correct = q["answer"]
-    if user_answer[0] == correct:
-        print(f"{Color.GREEN}✅ Correct!{Color.RESET}")
-        return True
-    else:
-        if user_answer[0] is None:
-            print(f"{Color.RED}❌ No valid answer given. "
-                  f"The correct answer was: {correct}) {q['options'][correct]}{Color.RESET}")
-        else:
-            print(f"{Color.RED}❌ Wrong! The correct answer was: "
-                  f"{correct}) {q['options'][correct]}{Color.RESET}")
+    elapsed = time.time() - start_time
+    stop_event.set()  # stop the background timer
+
+    # show time taken
+    print(f"{BLUE}(Answered in {elapsed:.1f}s){RESET}")
+
+    # check time limit
+    if elapsed > TIME_LIMIT:
+        print(f"{RED}Too slow! Time limit was {TIME_LIMIT}s.{RESET}")
+        print(f"{YELLOW}Correct answer: {q.answer}) {q.options[q.answer]}{RESET}")
         return False
 
+    # validate input
+    if user_input not in ("A", "B", "C", "D"):
+        print(f"{YELLOW}Invalid input. Answer must be A, B, C or D.{RESET}")
+        print(f"{YELLOW}Correct answer: {q.answer}) {q.options[q.answer]}{RESET}")
+        return False
 
-def display_result(score, total):
-    """Display the final result with grade."""
-    percentage = (score / total) * 100 if total > 0 else 0
+    # check correctness
+    if user_input == q.answer:
+        print(f"{GREEN}Correct!{RESET}")
+        return True
 
-    if percentage >= 90:
-        grade, grade_color = "A+ (Excellent!)", Color.GREEN
-    elif percentage >= 80:
-        grade, grade_color = "A (Great Job!)", Color.GREEN
-    elif percentage >= 70:
-        grade, grade_color = "B (Good!)", Color.CYAN
-    elif percentage >= 60:
-        grade, grade_color = "C (Average)", Color.YELLOW
-    elif percentage >= 50:
-        grade, grade_color = "D (Needs Improvement)", Color.YELLOW
-    else:
-        grade, grade_color = "F (Try Again!)", Color.RED
-
-    print(f"\n\n{Color.BOLD}{'═' * 50}{Color.RESET}")
-    print(f"{Color.BOLD}{Color.MAGENTA}           📋 FINAL RESULTS 📋{Color.RESET}")
-    print(f"{Color.BOLD}{'═' * 50}{Color.RESET}")
-    print(f"   Total Questions  : {total}")
-    print(f"   Correct Answers  : {Color.GREEN}{score}{Color.RESET}")
-    print(f"   Wrong Answers    : {Color.RED}{total - score}{Color.RESET}")
-    print(f"   Percentage       : {Color.BOLD}{percentage:.1f}%{Color.RESET}")
-    print(f"   Grade            : {grade_color}{Color.BOLD}{grade}{Color.RESET}")
-    print(f"{Color.BOLD}{'═' * 50}{Color.RESET}\n")
-
-    return percentage, grade
+    print(f"{RED}Wrong.{RESET}")
+    print(f"{YELLOW}Correct answer: {q.answer}) {q.options[q.answer]}{RESET}")
+    return False
 
 
-def save_score(score, total, percentage, grade, filename="scores.txt"):
-    """Save the quiz result to a text file with a timestamp."""
-    from datetime import datetime
+# ---------- grading ----------
+
+def letter_grade(percent: float) -> str:
+    if percent >= 90:
+        return "A+"
+    if percent >= 80:
+        return "A"
+    if percent >= 70:
+        return "B"
+    if percent >= 60:
+        return "C"
+    if percent >= 50:
+        return "D"
+    return "F"
+
+
+# ---------- saving results ----------
+
+def save_score(score: int, total: int, percent: float, grade: str) -> None:
+    """Append the result to scores.txt."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    with open(filename, "a", encoding="utf-8") as f:
-        f.write(f"{'=' * 40}\n")
-        f.write(f"Date & Time    : {timestamp}\n")
-        f.write(f"Score          : {score}/{total}\n")
-        f.write(f"Percentage     : {percentage:.1f}%\n")
-        f.write(f"Grade          : {grade}\n")
-        f.write(f"{'=' * 40}\n\n")
-
-    print(f"{Color.GREEN}💾 Score saved to '{filename}' successfully!{Color.RESET}")
+    entry = f"{timestamp} | Score: {score}/{total} | {percent:.1f}% | Grade: {grade}\n"
+    with open(SCORES_FILE, "a", encoding="utf-8") as fh:
+        fh.write(entry)
 
 
-def main():
-    """Main function to run the AI Quiz Generator."""
-    print_banner()
+# ---------- main loop ----------
 
-    # Load questions
-    questions = load_questions("questions.txt")
+def main() -> None:
+    # welcome message
+    print("=" * 50)
+    print("       AI Quiz Generator".center(50))
+    print("     Internship Mini Project".center(50))
+    print("=" * 50)
+
+    questions = load_questions()
     if not questions:
-        print(f"{Color.RED}No questions loaded. Exiting.{Color.RESET}")
+        print(f"{RED}No questions loaded. Make sure {QUESTIONS_FILE} exists.{RESET}")
         return
 
-    print(f"{Color.CYAN}📚 {len(questions)} questions loaded successfully!{Color.RESET}\n")
+    print(f"\n{CYAN}Loaded {len(questions)} questions.{RESET}")
+    print(f"{CYAN}Time limit: {TIME_LIMIT} seconds per question.{RESET}")
 
-    # Choose difficulty
-    selected = choose_difficulty(questions)
-    if not selected:
-        print(f"{Color.RED}No questions available for that difficulty. Exiting.{Color.RESET}")
-        return
+    # game loop (allows replaying at a different difficulty)
+    while True:
+        level = pick_difficulty()
+        selected = filter_questions(questions, level)
 
-    # Shuffle for randomness
-    random.shuffle(selected)
+        if not selected:
+            print(f"{YELLOW}No questions found for that level. Try another.{RESET}")
+            continue
 
-    total = len(selected)
-    score = 0
+        random.shuffle(selected)
+        total = len(selected)
+        score = 0
 
-    print(f"\n{Color.BOLD}{Color.CYAN}🎯 Starting Quiz with {total} questions... Good luck!{Color.RESET}")
-    print(f"{Color.YELLOW}(You have 15 seconds per question){Color.RESET}")
+        print(f"\n{CYAN}Starting {total} questions. Good luck!{RESET}")
 
-    # Ask each question
-    for i, q in enumerate(selected, 1):
-        if ask_question(q, i, total, timer_seconds=15):
-            score += 1
+        for i, q in enumerate(selected, start=1):
+            if ask_question(q, i, total):
+                score += 1
 
-    # Display and save results
-    percentage, grade = display_result(score, total)
-    save_score(score, total, percentage, grade)
+        # results
+        percent = (score / total) * 100
+        grade = letter_grade(percent)
 
-    print(f"{Color.CYAN}{Color.BOLD}Thank you for playing AI Quiz Generator! 🎉{Color.RESET}\n")
+        print("\n" + "=" * 50)
+        print(f"  Score      : {score}/{total}")
+        print(f"  Percentage : {percent:.1f}%")
+        print(f"  Grade      : {grade}")
+        print("=" * 50)
+
+        save_score(score, total, percent, grade)
+        print(f"{GREEN}Result saved to {SCORES_FILE}{RESET}")
+
+        # ask to continue
+        again = input("\nTry another difficulty? (y/n): ").strip().lower()
+        if again != "y":
+            print(f"\n{CYAN}Thanks for playing! Goodbye.{RESET}")
+            break
 
 
 if __name__ == "__main__":

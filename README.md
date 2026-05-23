@@ -1,140 +1,106 @@
-# 🤖 AI Quiz Generator
+# AI Quiz Generator
 
-> **Python with Generative AI Internship Mini Project**  
-> Think Champ PV LTD
+> Internship Mini Project | Python with Generative AI | Think Champ PV LTD
 
----
+## Overview
 
-## 📖 Project Overview
+A terminal-based Python quiz application that asks multiple-choice questions,
+validates answers, tracks scores, and saves results to a file.
 
-The **AI Quiz Generator** is a Python-based terminal application that automatically asks quiz questions, accepts user answers, validates them, calculates scores, and displays results. It simulates a basic AI assistant interaction through the command line.
+## Features
 
----
+- 15 questions across three difficulty levels (Easy, Medium, Hard)
+- Multiple-choice format (A / B / C / D)
+- Random question order each run
+- 15-second visible countdown timer per question
+- Warning at 5 seconds remaining
+- Shows time taken per answer
+- Score calculation with percentage and letter grade
+- Results saved to scores.txt with timestamps
+- Option to replay at a different difficulty without restarting
+- Coloured terminal output
 
-## ✨ Features
+## How to Run
 
-### Mandatory Features
-- ✅ Welcome Message with colorful banner
-- ✅ Minimum 5+ Quiz Questions (15 included!)
-- ✅ User Answer Input via terminal
-- ✅ Answer Validation (case-insensitive)
-- ✅ Score Calculation
-- ✅ Loop for Multiple Questions
-- ✅ Final Result Display with grade
-- ✅ Save Score in Text File with timestamp
+1. Make sure Python 3.6+ is installed.
+2. Open a terminal in the project folder.
+3. Run:
 
-### Optional / Bonus Features
-- ⏱️ **Timer** – 15-second countdown per question using multithreading
-- 🔤 **Multiple Choice Questions** – A/B/C/D options
-- 📊 **Difficulty Levels** – Easy, Medium, Hard, or Mixed
-- 🔀 **Random Questions** – Questions are shuffled each run
-- 🎨 **Colored Output** – ANSI color codes (no external library required)
+```
+python quiz.py
+```
 
----
+4. Choose a difficulty and answer the questions.
 
-## 🚀 How to Run
-
-### Prerequisites
-- Python 3.6 or higher
-
-### Steps
-1. Clone or download this project folder.
-2. Open a terminal/command prompt in the project directory.
-3. Run the following command:
-   ```bash
-   python quiz.py
-   ```
-4. Follow the on-screen prompts to:
-   - Choose a difficulty level
-   - Answer the quiz questions
-   - View your final score and grade
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 AI_Quiz_Generator/
-│
-├── quiz.py           # Main Python application
-├── questions.txt     # Quiz questions database
-├── scores.txt        # Auto-generated score history (created after first run)
-└── README.md         # Project documentation (this file)
+    quiz.py          Main application
+    questions.txt    Question bank
+    scores.txt       Score history (created on first run)
+    README.md        This file
 ```
 
----
+## Technologies
 
-## 🛠️ Technologies Used
+- Python 3
+- File I/O (question loading and score saving)
+- random (question shuffling)
+- time (answer timer)
+- threading (background countdown)
+- dataclasses (question model)
+- ANSI escape codes (coloured output)
 
-| Technology | Purpose |
-|---|---|
-| Python 3.x | Core programming language |
-| Threading | Timer functionality |
-| Random | Question shuffling |
-| File I/O | Loading questions & saving scores |
-| ANSI Codes | Colored terminal output |
-
----
-
-## 📸 Sample Output
+## Sample Output
 
 ```
-╔══════════════════════════════════════════════════╗
-║                                                  ║
-║        🤖  AI QUIZ GENERATOR  🤖                ║
-║                                                  ║
-║   Python with Generative AI Internship Project   ║
-║              Think Champ PV LTD                  ║
-║                                                  ║
-╚══════════════════════════════════════════════════╝
+==================================================
+            AI Quiz Generator
+          Internship Mini Project
+==================================================
 
-📚 15 questions loaded successfully!
+Loaded 15 questions.
+Time limit: 15 seconds per question.
 
-📊 Choose Difficulty Level:
-   1) Easy
-   2) Medium
-   3) Hard
-   4) All (Mixed)
+Select difficulty:
+  1) Easy
+  2) Medium
+  3) Hard
+  4) All (mixed)
+Enter 1-4: 1
 
-──────────────────────────────────────────────────
-Question 1/5  [Easy]  ⏱️  15 seconds
-──────────────────────────────────────────────────
+--------------------------------------------------
+Question 1/5  [Easy]  Timer: 15s
+--------------------------------------------------
 
 What is Python?
 
-   A) A web browser
-   B) A programming language
-   C) An operating system
-   D) A database
+  A) A web browser
+  B) A programming language
+  C) An operating system
+  D) A database
 
-Your Answer (A/B/C/D): B
-✅ Correct!
+You have 15 seconds to answer...
 
-══════════════════════════════════════════════════
-           📋 FINAL RESULTS 📋
-══════════════════════════════════════════════════
-   Total Questions  : 5
-   Correct Answers  : 4
-   Wrong Answers    : 1
-   Percentage       : 80.0%
-   Grade            : A (Great Job!)
-══════════════════════════════════════════════════
+Your answer (A/B/C/D): B
+(Answered in 3.2s)
+Correct!
 
-💾 Score saved to 'scores.txt' successfully!
-Thank you for playing AI Quiz Generator! 🎉
+==================================================
+  Score      : 4/5
+  Percentage : 80.0%
+  Grade      : A
+==================================================
+Result saved to scores.txt
+
+Try another difficulty? (y/n): n
+Thanks for playing! Goodbye.
 ```
 
----
+## Author
 
-## 👤 Author
-
-- **Name:** [Your Name]
+- **Name:** Pitti Anusha
 - **Program:** Python with Generative AI Internship
 - **Organization:** Think Champ PV LTD
 - **Date:** May 2026
-
----
-
-## 📄 License
-
-This project is created as part of the Think Champ internship program.
